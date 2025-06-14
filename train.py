@@ -9,7 +9,7 @@ import loss_fn as lf
 from tqdm import tqdm
 from BEA import BEA
 from torch.utils.data import Dataset, TensorDataset, DataLoader, Subset
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel, get_cosine_schedule_with_warmup
 from sklearn.model_selection import KFold
 from scipy.stats import chi2_contingency
 from sklearn.metrics import mutual_info_score
@@ -38,6 +38,7 @@ def init_args():
     parser.add_argument('--lstm_hid_dim', type=int, default=768)
     parser.add_argument('--mul_att_out_dim', type=int, default=128)
     parser.add_argument('--embed_dim', type=int, default=2560)
+    parser.add_argument('--learning_rate', type=float, default=1e-5)
     return parser.parse_args()
 
 
@@ -110,17 +111,27 @@ def main():
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = BEA(args=args, output_dim=4).to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        # Set warmup steps as 10% of one epoch or at least 100 steps, whichever is smaller
+        steps_per_epoch = len(train_dataloader)
+        total_steps = args.epochs * steps_per_epoch
+        warmup_steps = min(max(int(0.1 * steps_per_epoch), 10), 500)
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps
+        )
+
 
         for epoch in range(args.epochs):
-            train(model, optimizer, train_dataloader, device)
+            train(model, optimizer, scheduler, train_dataloader, device)
             eval(model, test_dataloader, device)
         return
 
     return 
 
 
-def train(model, optimizer, dataloader, device):
+def train(model, optimizer, scheduler, dataloader, device):
     model.train()
     loss_fn = lf.FocalLoss(alpha=torch.tensor([1.5, 1.5, 1.0]))
 
@@ -133,6 +144,9 @@ def train(model, optimizer, dataloader, device):
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # Gradient clipping
         optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad()
+        # print(f'loss: {loss.item()}')
         total_loss += loss.item()
         batch_num += 1
     avg_loss = total_loss / batch_num
