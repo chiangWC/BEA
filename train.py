@@ -172,6 +172,19 @@ def eval(model, dataloader, device):
     print('=' * 50)
 
 
+def extract_embeddings(model, dataloader, device):
+    model.eval()
+    all_embeddings, all_labels = [], []
+    with torch.no_grad():
+        for batch in dataloader:
+            conversation, response, label = map(lambda x: x.to(device), batch)
+            embedding = model.get_embedding(conversation, response)  # 你在BEA里加的
+            all_embeddings.append(embedding.cpu().numpy())
+            all_labels.append(label.cpu().numpy())
+    embeddings = np.concatenate(all_embeddings)
+    labels = np.concatenate(all_labels)
+    return embeddings, labels
+
 
 if __name__ == '__main__':
     main()

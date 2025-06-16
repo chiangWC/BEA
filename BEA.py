@@ -13,6 +13,13 @@ class BEA(nn.Module):
     def forward(self, conversation, response, mask=None):
         pred_score = self.score_pred(conversation, response, mask)
         return pred_score
+    
+    @torch.no_grad()
+    def get_embedding(self, conversation, response, mask=None):
+        _, embedding = self.score_pred(conversation, response, mask, return_embedding=True)
+        # 展平成 [batch, output_dim * embed_dim]
+        embedding = embedding.reshape(embedding.size(0), -1)
+        return embedding
 
 
 class score_pred(nn.Module):
@@ -28,7 +35,7 @@ class score_pred(nn.Module):
             trait_process_classification(self.args) for _ in range(output_dim)
         ])
 
-    def forward(self, conversation, response, mask=None):
+    def forward(self, conversation, response, mask=None, return_embedding=False):
         cross_att_out = []
         for process in self.essay_prompt_process_list:
             process_out = process(conversation, response, mask)
@@ -41,6 +48,8 @@ class score_pred(nn.Module):
             final_pred.append(pred_score)
 
         final_pred = torch.stack(final_pred, dim=1)
+        if return_embedding:
+            return final_pred, cross_att_out
         return final_pred
 
 
