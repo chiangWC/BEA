@@ -28,8 +28,8 @@ def mutual_info(x, y):
 
 def init_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dev_data_path', type=str, default='./BEA/data/mrbench_v3_devset.json')
-    parser.add_argument('--test_data_path', type=str, default='./BEA/data/mrbench_v3_testset.json')
+    parser.add_argument('--dev_data_path', type=str, default='./data/mrbench_v3_devset.json')
+    parser.add_argument('--test_data_path', type=str, default='./data/mrbench_v3_testset.json')
     parser.add_argument('--model_path', type=str, default='./model/')
     parser.add_argument('--model_name', type=str, default='Qwen3-Embedding-4B')
     
@@ -92,8 +92,8 @@ def main():
     conversation_history, tutor_responses, label = utils.data_process(dev_set, task_type=task_list[5])
 
     label = utils.label_convert(label)
-    conversation_history = torch.load(f'./BEA/tensor/{args.model_name}_conversation_tensor.pt')
-    tutor_responses = torch.load(f'./BEA/tensor/{args.model_name}_response_tensor.pt')
+    conversation_history = torch.load(f'./tensor/{args.model_name}_conversation_tensor.pt')
+    tutor_responses = torch.load(f'./tensor/{args.model_name}_response_tensor.pt')
     # conversation_history, max_para = utils.text_process(conversation_history, text_type='conversation')
     # tutor_responses, _ = utils.text_process(tutor_responses, text_type='response')
     # args.max_para = max_para
